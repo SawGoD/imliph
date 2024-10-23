@@ -1,0 +1,29 @@
+{
+  "name": "imliph",
+  "description": "Это бот для загрузки изображений на imgBB",
+  "main": "index.js",
+  "scripts": {
+    "dev": "npx nodemon src/index.ts",
+    "main": "npx ts-node src/index.ts"
+  },
+  "author": "SawGoD",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SawGoD/"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.7",
+    "dotenv": "^16.4.5",
+    "nodemon": "^3.1.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "formdata": "^0.10.4",
+    "telegraf": "^4.16.3"
+  },
+  "warnings": {
+    "punycode": "false"
+  }
+}
