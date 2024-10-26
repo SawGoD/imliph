@@ -3,8 +3,8 @@
   "description": "Это бот для загрузки изображений на imgBB",
   "main": "index.js",
   "scripts": {
-    "dev": "npx nodemon src/index.ts",
-    "main": "npx ts-node src/index.ts"
+    "dev": "nodemon src/index.ts -L",
+    "main": "ts-node src/index.ts"
   },
   "author": "SawGoD",
   "repository": {
