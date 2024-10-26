@@ -7,7 +7,7 @@ export const hello = async (ctx: any, code: any) => {
         const message = msg.hello + '\n' + msg.desc.description
         await ctx.replyWithMarkdownV2(validateMessage(message), {
             reply_markup: {
-                inline_keyboard: [[{ text: btn.help, url: 'https://t.me/TF_SGD_BOT?start=help' }]],
+                inline_keyboard: [[{ text: btn.help, url: 'https://t.me/ImliphBot?start=help' }]],
             },
         })
     }
