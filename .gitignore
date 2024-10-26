@@ -1,5 +1,5 @@
 .env
-.end.dev
+.env.dev
 node_modules
 test*
 dist
