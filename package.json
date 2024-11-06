@@ -4,12 +4,13 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon src/index.ts -L",
+    "test": "nodemon test/test.ts -L",
     "main": "ts-node src/index.ts"
   },
   "author": "SawGoD",
   "repository": {
     "type": "git",
-    "url": "https://github.com/SawGoD/"
+    "url": "https://github.com/SawGoD/imliph"
   },
   "devDependencies": {
     "@types/node": "^22.7.7",
