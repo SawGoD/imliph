@@ -1,0 +1,12 @@
+services:
+  dev-ver:
+    env_file:
+      - ../.env.dev
+    build:
+      context: ..
+      dockerfile: docker/dockerfiles/Dockerfile.dev
+    volumes:
+      - ../src:/app/src
+
+    ports:
+      - "5556:5556"
