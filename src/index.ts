@@ -1,7 +1,7 @@
 import { Telegraf } from 'telegraf'
 import { message } from 'telegraf/filters'
 import { botToken } from './environment'
-import { findUrl, handleImage } from './handlers'
+import { handleImage, handleUrl } from './handlers'
 import { hello, help } from './helpers/commands'
 
 const bot = new Telegraf(botToken as string)
@@ -14,7 +14,7 @@ bot.hears('/help', help)
 // Обработчики
 bot.on(message('photo'), handleImage)
 bot.on(message('document'), handleImage)
-bot.on(message('text'), findUrl)
+bot.on(message('text'), handleUrl)
 
 // Запуск бота
 bot.launch()

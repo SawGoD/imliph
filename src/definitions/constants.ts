@@ -18,11 +18,18 @@ export const messagesReplies = {
     },
 
     // buttonsDescription: '*Кнопки бота:* \n__Поделиться__ \n__Подробнее__',
+    // Сообщения для обработки изображений
     goodUpload: (url: string) => `Ссылка на изображение: [⠀](${url}) \n\`${url}\``,
     badUploadPhoto: 'Произошла ошибка при обработке изображения.',
     badUploadDoc: 'Произошла ошибка при обработке документа.',
     badDocExtension: '*Неподходящее расширение!*',
     sharedUrl: (url: string) => `Ссылка на изображение: \n${url}`,
+
+    // Сообщения связанные с иконками
+    goodDownload: '',
+    badDownload: '*Не удалось скачать иконку.* \nВозможно, она отсутствует на сайте.',
+    faviconName: 'favicon',
+    noLinks: 'Не получилось найти ссылки в сообщении.',
 }
 
 export const buttonTexts = {
