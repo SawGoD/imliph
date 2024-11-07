@@ -20,11 +20,14 @@ export const help = async (ctx: any) => {
         msg.desc.description +
         '\n' +
         msg.desc.addDescription +
+        '\n' +
+        msg.desc.favIconDescription +
         '\n\n' +
         msg.desc.supDocExt +
         '\n\n' +
         msg.desc.maxFileSize +
         '\n\n' +
         msg.desc.buttonsDescription()
+
     await ctx.replyWithMarkdownV2(validateMessage(message), {})
 }
