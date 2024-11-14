@@ -16,7 +16,7 @@ import { validateMessage } from './helpers/validates'
  * @returns {Promise<void>} - A promise that resolves when the message has been sent.
  */
 const sendGoodUrlMessage = async (ctx: any, message: string, imgLink: string, imgDelLink: string) => {
-    await ctx.replyWithMarkdownV2(validateMessage(message), {
+    await ctx.replyWithMarkdownV2(message, {
         reply_markup: {
             inline_keyboard: [[{ text: btn.share, switch_inline_query: msg.sharedUrl(imgLink) }], [{ text: btn.detailed, url: imgDelLink }]],
         },
