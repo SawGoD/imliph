@@ -1,22 +1,24 @@
+import TelegramBot from 'node-telegram-bot-api'
 import { buttonTexts as btn, messagesReplies as msg } from '../definitions/constants'
 import { validateMessage } from './validates'
 
-export const hello = async (ctx: any, code: any) => {
+export const hello = async (bot: TelegramBot, message: TelegramBot.Message, code?: string): Promise<void> => {
     if (code !== 'help') {
-        ctx.deleteMessage().catch(() => {})
-        const message = msg.hello + '\n' + msg.desc.description
-        await ctx.replyWithMarkdownV2(validateMessage(message), {
+        bot.deleteMessage(message.chat.id, message.message_id).catch(() => {})
+        const messageText = msg.hello + '\n' + msg.desc.description
+        await bot.sendMessage(message.chat.id, validateMessage(messageText), {
+            parse_mode: 'MarkdownV2',
             reply_markup: {
                 inline_keyboard: [[{ text: btn.help, url: 'https://t.me/ImliphBot?start=help' }]],
             },
         })
     }
-    if (code === 'help') await help(ctx)
+    if (code === 'help') await help(bot, message)
 }
 
-export const help = async (ctx: any) => {
-    ctx.deleteMessage().catch(() => {})
-    const message =
+export const help = async (bot: TelegramBot, message: TelegramBot.Message): Promise<void> => {
+    bot.deleteMessage(message.chat.id, message.message_id).catch(() => {})
+    const messageText =
         msg.desc.description +
         '\n' +
         msg.desc.addDescription +
@@ -29,5 +31,7 @@ export const help = async (ctx: any) => {
         '\n\n' +
         msg.desc.buttonsDescription()
 
-    await ctx.replyWithMarkdownV2(validateMessage(message), {})
+    await bot.sendMessage(message.chat.id, validateMessage(messageText), {
+        parse_mode: 'MarkdownV2',
+    })
 }
