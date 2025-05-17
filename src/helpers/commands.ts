@@ -24,6 +24,8 @@ export const help = async (bot: TelegramBot, message: TelegramBot.Message): Prom
         msg.desc.addDescription +
         '\n' +
         msg.desc.favIconDescription +
+        '\n' +
+        msg.desc.stickerDescription +
         '\n\n' +
         msg.desc.supDocExt +
         '\n\n' +
