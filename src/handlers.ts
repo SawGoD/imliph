@@ -1,80 +1,178 @@
 import axios from 'axios'
-import { action, buttonTexts as btn, messagesReplies as msg } from './definitions/constants'
-import { CTX } from './definitions/types'
+import * as fs from 'fs'
+import TelegramBot from 'node-telegram-bot-api'
+import * as os from 'os'
+import * as path from 'path'
+import { buttonTexts as btn, messagesReplies } from './definitions/constants'
 import { botToken } from './environment'
-import { tryDownloadFavicon } from './helpers/downloadFavicon'
+import { FaviconResult, tryDownloadFavicon } from './helpers/downloadFavicon'
 import { uploadToImgBB } from './helpers/uploadImage'
 import { validateMessage } from './helpers/validates'
 
 /**
- * Sends the user a message with a link to the image and buttons to share it or view its details.
+ * Отправляет пользователю сообщение со ссылкой на изображение и кнопками для его публикации или просмотра подробностей.
  *
- * @param ctx - The Telegraf context.
- * @param message - The message to be sent to the user.
- * @param imgLink - The link to the image hosted on imgBB.
- * @param imgDelLink - The link to the deletion page for the image on imgBB.
- * @returns {Promise<void>} - A promise that resolves when the message has been sent.
+ * @param bot - Экземпляр TelegramBot для отправки сообщений.
+ * @param chatId - ID чата, в который нужно отправить сообщение.
+ * @param message - Сообщение для отправки пользователю.
+ * @param imgLink - Ссылка на изображение, размещенное на imgBB.
+ * @param imgDelLink - Ссылка для удаления изображения на imgBB.
+ * @returns {Promise<void>} - Promise, который разрешается после отправки сообщения.
  */
-const sendGoodUrlMessage = async (ctx: any, message: string, imgLink: string, imgDelLink: string) => {
-    await ctx.replyWithMarkdownV2(message, {
+const sendGoodUrlMessage = async (bot: TelegramBot, chatId: number, message: string, imgLink: string, imgDelLink: string): Promise<void> => {
+    await bot.sendMessage(chatId, message, {
+        parse_mode: 'MarkdownV2',
         reply_markup: {
-            inline_keyboard: [[{ text: btn.share, switch_inline_query: msg.sharedUrl(imgLink) }], [{ text: btn.detailed, url: imgDelLink }]],
+            inline_keyboard: [
+                [{ text: btn.share, switch_inline_query: messagesReplies.sharedUrl(imgLink) }],
+                [{ text: btn.detailed, url: imgDelLink }],
+            ],
         },
     })
 }
 
 /**
- * Sends the favicon file from the specified URL to the context.
+ * Отправляет файл иконки по указанному URL в контекст.
  *
- * @param ctx - The context object used for sending messages.
- * @param url - The URL to download the favicon from.
+ * @param bot - Экземпляр TelegramBot для отправки сообщений.
+ * @param msg - Сообщение от пользователя.
+ * @param url - URL для загрузки иконки.
  */
-const sendFaviconFile = async (ctx: CTX, url: string) => {
-    const faviconBuffer = await tryDownloadFavicon(url)
-    faviconBuffer
-        ? await ctx.replyWithDocument({ source: faviconBuffer.faviconBuffer, filename: `${faviconBuffer.title}.ico` })
-        : await ctx.replyWithMarkdownV2(validateMessage(msg.badDownload))
-}
+const sendFaviconFile = async (bot: TelegramBot, msg: TelegramBot.Message, url: string): Promise<void> => {
+    try {
+        const faviconResult: FaviconResult | null = await tryDownloadFavicon(url)
+        if (faviconResult && faviconResult.faviconBuffer) {
+            // Создаем временный файл для иконки с правильным именем
+            // Это решает проблему с отправкой файла и его именем
+            const fileName = `${faviconResult.title}.ico`
+            const tempFilePath = path.join(os.tmpdir(), fileName)
 
-/**
- * Handles all types of messages by running the appropriate function for each one.
- *
- * @param ctx - The Telegraf context.
- * @returns {Promise<void>} - A promise that resolves when all the functions have been called.
- */
-export const handleImage = (ctx: CTX) =>
-    Promise.all(Object.keys(ctx.message).map((key) => action[key]?.(ctx, ctx.message[key]))).catch((e) => console.log(e))
+            try {
+                // Записываем буфер во временный файл
+                fs.writeFileSync(tempFilePath, faviconResult.faviconBuffer)
 
-/**
- * Handles the URL extraction from a message and sends the corresponding favicon.
- *
- * @param ctx - The context object containing the message data.
- */
-export const handleUrl = async (ctx: CTX) => {
-    const text = ctx.message.text
-    const regex = /(https?:\/\/[^\s]+)/g
-    const url = text.match(regex)
-    if (url) {
-        sendFaviconFile(ctx, url[0])
-        // ctx.reply(url, { reply_to_message_id: ctx.message.message_id })
-    } else {
-        ctx.reply(msg.noLinks, { reply_to_message_id: ctx.message.message_id })
+                // Отправляем файл с корректным именем
+                // При отправке физического файла библиотека node-telegram-bot-api
+                // автоматически использует имя файла из пути
+                const fileOptions: TelegramBot.SendDocumentOptions = {
+                    caption: `Favicon для ${url}`,
+                }
+
+                // Отправка файла с диска (расширение файла .ico определит тип автоматически)
+                await bot.sendDocument(msg.chat.id, tempFilePath, fileOptions)
+
+                // Удаляем временный файл после отправки
+                fs.unlinkSync(tempFilePath)
+            } catch (fileError) {
+                console.error('Ошибка при работе с файлом:', fileError)
+
+                try {
+                    // Пробуем отправить как фото - это часто работает для иконок
+                    const photoOptions: TelegramBot.SendPhotoOptions = {
+                        caption: `Favicon для ${url}`,
+                    }
+                    await bot.sendPhoto(msg.chat.id, faviconResult.faviconBuffer, photoOptions)
+                } catch (photoError) {
+                    console.error('Не удалось отправить как фото:', photoError)
+
+                    // Если не удалось отправить как файл или фото
+                    // Попробуем загрузить на imgBB и отправить ссылку
+                    try {
+                        const uploadData = await uploadToImgBB(faviconResult.faviconBuffer)
+                        await bot.sendMessage(msg.chat.id, `Favicon для ${url}\nСсылка: ${uploadData.url}`, {
+                            reply_to_message_id: msg.message_id,
+                        })
+                    } catch (uploadError) {
+                        console.error('Не удалось загрузить на imgBB:', uploadError)
+                        await bot.sendMessage(msg.chat.id, 'Не удалось отправить иконку. Попробуйте позже.', {
+                            reply_to_message_id: msg.message_id,
+                        })
+                    }
+                }
+            }
+        } else {
+            await bot.sendMessage(msg.chat.id, validateMessage(messagesReplies.badDownload), { parse_mode: 'MarkdownV2' })
+        }
+    } catch (error) {
+        console.error('Ошибка при отправке иконки:', error)
+        await bot.sendMessage(msg.chat.id, validateMessage(messagesReplies.badDownload), { parse_mode: 'MarkdownV2' })
     }
 }
 
 /**
- * Processes the image by retrieving it from Telegram, uploading it to imgBB, and sending the user a message with the image link.
+ * Обрабатывает все типы сообщений, запуская соответствующую функцию для каждого из них.
  *
- * @param ctx - The Telegraf context.
- * @param fileId - The file ID of the image.
- * @returns {Promise<void>} - A promise that resolves when the image has been processed.
+ * @param bot - Экземпляр TelegramBot.
+ * @param msg - Сообщение от пользователя.
+ * @returns {Promise<void[]>} - Promise, который разрешается после вызова всех функций.
  */
-export const processImage = (ctx: CTX, fileId: string) =>
-    (ctx.telegram.getFile(fileId) as Promise<any>)
-        .then((file: any) => file.file_path as string)
-        .then((filePath) => `https://api.telegram.org/file/bot${botToken}/${filePath}`)
-        .then((url) => axios.get(url, { responseType: 'arraybuffer' }))
-        .then((response) => Buffer.from(response.data))
-        .then((fileBuffer) => uploadToImgBB(fileBuffer))
-        .then((uploadData) => sendGoodUrlMessage(ctx, msg.goodUpload(uploadData.url), uploadData.url, uploadData.delete_url))
-        .then(() => ctx.deleteMessage())
+export const handleImage = async (bot: TelegramBot, msg: TelegramBot.Message): Promise<void[]> => {
+    const promises: Promise<void>[] = []
+
+    if (msg.photo && msg.photo.length > 0) {
+        const photoFileId = msg.photo[msg.photo.length - 1]?.file_id
+        if (photoFileId) {
+            promises.push(processImage(bot, msg, photoFileId))
+        }
+    }
+
+    if (msg.document) {
+        promises.push(processImage(bot, msg, msg.document.file_id))
+    }
+
+    return Promise.all(promises).catch((e) => {
+        console.log(e)
+        return []
+    })
+}
+
+/**
+ * Обрабатывает извлечение URL из сообщения и отправляет соответствующую иконку.
+ *
+ * @param bot - Экземпляр TelegramBot.
+ * @param msg - Сообщение от пользователя.
+ */
+export const handleUrl = async (bot: TelegramBot, msg: TelegramBot.Message): Promise<void> => {
+    if (!msg.text) return
+
+    const text = msg.text
+    const regex = /(https?:\/\/[^\s]+)/g
+    const url = text.match(regex)
+
+    if (url) {
+        sendFaviconFile(bot, msg, url[0])
+    } else {
+        bot.sendMessage(msg.chat.id, messagesReplies.noLinks, { reply_to_message_id: msg.message_id })
+    }
+}
+
+/**
+ * Обрабатывает изображение, получая его из Telegram, загружая на imgBB и отправляя пользователю сообщение со ссылкой на изображение.
+ *
+ * @param bot - Экземпляр TelegramBot.
+ * @param msg - Сообщение от пользователя.
+ * @param fileId - ID файла изображения.
+ * @returns {Promise<void>} - Promise, который разрешается после обработки изображения.
+ */
+export const processImage = async (bot: TelegramBot, msg: TelegramBot.Message, fileId: string): Promise<void> => {
+    try {
+        const file = await bot.getFile(fileId)
+
+        if (!file.file_path) {
+            throw new Error('Не удалось получить путь к файлу')
+        }
+
+        const fileUrl = `https://api.telegram.org/file/bot${botToken}/${file.file_path}`
+
+        const response = await axios.get(fileUrl, { responseType: 'arraybuffer' })
+        const fileBuffer = Buffer.from(response.data)
+
+        const uploadData = await uploadToImgBB(fileBuffer)
+
+        await sendGoodUrlMessage(bot, msg.chat.id, messagesReplies.goodUpload(uploadData.url), uploadData.url, uploadData.delete_url)
+        await bot.deleteMessage(msg.chat.id, msg.message_id)
+    } catch (error) {
+        console.error('Ошибка при обработке изображения:', error)
+        await bot.sendMessage(msg.chat.id, 'Произошла ошибка при обработке изображения.')
+    }
+}

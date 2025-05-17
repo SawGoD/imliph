@@ -1,21 +1,24 @@
-import { Telegraf } from 'telegraf'
-import { message } from 'telegraf/filters'
+import TelegramBot from 'node-telegram-bot-api'
 import { botToken } from './environment'
 import { handleImage, handleUrl } from './handlers'
 import { hello, help } from './helpers/commands'
 
-const bot = new Telegraf(botToken as string)
+// Отключаем предупреждения о deprecation (устаревших функциях)
+process.env['NTBA_FIX_319'] = '1' // Предупреждение о файлах с именем "filename"
+process.env['NTBA_FIX_350'] = '1' // Предупреждение о content-type для файлов
+
+const bot = new TelegramBot(botToken as string, { polling: true })
 
 // Команды
-bot.hears('/start', hello)
-bot.hears('/start help', (ctx) => hello(ctx, 'help'))
-bot.hears('/help', help)
+bot.onText(/^\/start$/, (msg) => hello(bot, msg))
+bot.onText(/^\/start help$/, (msg) => hello(bot, msg, 'help'))
+bot.onText(/^\/help$/, (msg) => help(bot, msg))
 
-// Обработчики
-bot.on(message('photo'), handleImage)
-bot.on(message('document'), handleImage)
-bot.on(message('text'), handleUrl)
+// Обработчики для фотографий и документов
+bot.on('photo', (msg) => handleImage(bot, msg))
+bot.on('document', (msg) => handleImage(bot, msg))
 
-// Запуск бота
-bot.launch()
+// Обработчик для текстовых сообщений (проверка ссылок)
+bot.on('text', (msg) => handleUrl(bot, msg))
+
 console.log('➖ ➖ ➖  Бот запущен➖ ➖ ➖')
